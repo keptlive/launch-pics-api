@@ -4,16 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>API Documentation | launch.pics</title>
-    <meta name="description" content="launch.pics Image Processing API — 35+ tools for resizing, cropping, filtering, and transforming images via REST API. Pipelines, batch processing, and AI-powered workflows.">
+    <meta name="description" content="launch.pics Image Processing API — 50 tools for resizing, cropping, filtering, and transforming images via REST API. Pipelines, batch processing, and AI-powered workflows.">
     <link rel="canonical" href="https://launch.pics/docs/">
     <meta property="og:title" content="launch.pics API Documentation">
-    <meta property="og:description" content="35+ image processing tools as a REST API. Resize, crop, filter, watermark, and more. AI-powered pipeline generation.">
+    <meta property="og:description" content="50 image processing tools as a REST API. Resize, crop, filter, watermark, and more. AI-powered pipeline generation.">
     <meta property="og:url" content="https://launch.pics/docs/">
     <meta property="og:type" content="website">
     <meta property="og:image" content="https://launch.pics/og-image.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="launch.pics API Documentation">
-    <meta name="twitter:description" content="35+ image processing tools as a REST API.">
+    <meta name="twitter:description" content="50 image processing tools as a REST API.">
     <meta name="twitter:image" content="https://launch.pics/og-image.png">
     <style>
         :root {
@@ -252,7 +252,7 @@
         "@context": "https://schema.org",
         "@type": "WebAPI",
         "name": "launch.pics Image Processing API",
-        "description": "REST API with 35+ image processing tools — resize, crop, filter, watermark, and more. Includes AI-powered pipeline generation and batch processing.",
+        "description": "REST API with 50 image processing tools — resize, crop, filter, watermark, and more. Includes AI-powered pipeline generation and batch processing.",
         "url": "https://launch.pics/docs/",
         "documentation": "https://launch.pics/docs/",
         "provider": {
@@ -677,6 +677,14 @@
                 <tr><td class="param-name">split-tone</td><td>Split toning colors</td><td><code>shadow_color</code>, <code>highlight_color</code>, <code>strength</code></td></tr>
                 <tr><td class="param-name">color-grade</td><td>Professional LGG grading</td><td><code>lift_r/g/b</code>, <code>gamma_r/g/b</code>, <code>gain_r/g/b</code></td></tr>
                 <tr><td class="param-name">smart-resize</td><td>Smart center-crop resize</td><td><code>width</code>, <code>height</code></td></tr>
+            </table>
+
+            <h3>SVG Tools</h3>
+            <table class="param-table">
+                <tr><th>Tool</th><th>Description</th><th>Key Params</th></tr>
+                <tr><td class="param-name">svg-trace</td><td>Convert bitmap to SVG vector art</td><td><code>threshold</code> (0-255), <code>color</code> (hex), <code>detail</code> (low|normal|high), <code>smoothness</code> (0-1.5)</td></tr>
+                <tr><td class="param-name">svg-to-png</td><td>Render SVG content to PNG</td><td><code>svg</code> (raw SVG string), <code>width</code>, <code>height</code>, <code>scale</code></td></tr>
+                <tr><td class="param-name">svg-pattern</td><td>Generate SVG pattern overlay</td><td><code>pattern</code> (dots|lines|grid|waves|diamonds|hexagons), <code>size</code>, <code>color</code>, <code>opacity</code></td></tr>
             </table>
 
             <h3>Overlay & Compositing</h3>

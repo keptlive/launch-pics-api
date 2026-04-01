@@ -16,6 +16,10 @@ import secrets
 from functools import wraps
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import cairosvg
+import svgwrite
+import subprocess as _subprocess
+import tempfile as _tempfile
 
 app = Flask(__name__)
 CORS(app)
@@ -23,13 +27,19 @@ CORS(app)
 MAX_SIZE = 20 * 1024 * 1024  # 20MB max upload
 
 def get_image_from_request():
-    """Extract image from request (file upload or base64)."""
-    if 'image' in request.files:
-        f = request.files['image']
-        return Image.open(f.stream)
-    elif request.is_json and request.get_json(silent=True) and 'image_base64' in request.get_json(silent=True):
-        data = base64.b64decode(request.get_json(silent=True)['image_base64'])
-        return Image.open(io.BytesIO(data))
+    """Extract image from request (file upload or base64) with validation."""
+    try:
+        if 'image' in request.files:
+            f = request.files['image']
+            return Image.open(f.stream)
+        elif request.is_json and request.get_json(silent=True) and 'image_base64' in request.get_json(silent=True):
+            b64 = request.get_json(silent=True)['image_base64']
+            if len(b64) > MAX_SIZE * 1.4:
+                return None
+            data = base64.b64decode(b64)
+            return Image.open(io.BytesIO(data))
+    except Exception:
+        return None
     return None
 
 def image_to_response(img, fmt='PNG', quality=90):
@@ -334,7 +344,7 @@ def watermark():
 
     try:
         font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', font_size)
-    except:
+    except Exception:
         font = ImageFont.load_default()
 
     bbox = draw.textbbox((0, 0), text, font=font)
@@ -898,7 +908,7 @@ def text_overlay():
 
     try:
         font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', font_size)
-    except:
+    except Exception:
         font = ImageFont.load_default()
 
     # Create text layer
@@ -1347,7 +1357,7 @@ def _watermark(img, params):
     draw = ImageDraw.Draw(overlay)
     try:
         font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', font_size)
-    except:
+    except Exception:
         font = ImageFont.load_default()
     bbox = draw.textbbox((0, 0), text, font=font)
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
@@ -1532,7 +1542,7 @@ def _text_overlay(img, params):
 
     try:
         font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', font_size)
-    except:
+    except Exception:
         font = ImageFont.load_default()
 
     txt_layer = Image.new('RGBA', img.size, (0, 0, 0, 0))
@@ -1701,7 +1711,7 @@ def get_font(font_name, size):
     if key in FONT_REGISTRY:
         try:
             return ImageFont.truetype(FONT_REGISTRY[key]["path"], size)
-        except:
+        except Exception:
             pass
 
     # Try direct font name lookup
@@ -1709,13 +1719,13 @@ def get_font(font_name, size):
     if direct in FONT_REGISTRY:
         try:
             return ImageFont.truetype(FONT_REGISTRY[direct]["path"], size)
-        except:
+        except Exception:
             pass
 
     # Fallback to DejaVu
     try:
         return ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size)
-    except:
+    except Exception:
         return ImageFont.load_default()
 
 
@@ -1906,7 +1916,7 @@ def _meme(img, params):
 
     w, h = img.size
     if font_size == 0:
-        font_size = max(24, w // 12)
+        font_size = max(24, min(w // 14, h // 10))
 
     font = get_font("impact", font_size)
     if not font:
@@ -1915,7 +1925,7 @@ def _meme(img, params):
     txt_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(txt_layer)
 
-    def draw_meme_text(draw, text, y_center, font):
+    def draw_meme_text(draw, text, y_center, font, fs):
         if not text:
             return
         # Word wrap
@@ -1934,22 +1944,28 @@ def _meme(img, params):
         if current:
             lines.append(current)
 
-        total_h = len(lines) * (font_size + 4)
+        # Auto-reduce font if text overflows vertically (max 40% of image height per block)
+        max_block_h = h * 0.4
+        total_h = len(lines) * (fs + 4)
+        if total_h > max_block_h and fs > 24:
+            new_fs = max(24, int(fs * max_block_h / total_h))
+            new_font = get_font("impact", new_fs)
+            return draw_meme_text(draw, text, y_center, new_font, new_fs)
+
         cy = y_center - total_h // 2
 
         for line in lines:
             bbox = draw.textbbox((0, 0), line, font=font)
             tw = bbox[2] - bbox[0]
             tx = (w - tw) // 2
-            # Black outline
             draw.text((tx, cy), line, fill=(255, 255, 255, 255), font=font,
-                      stroke_fill=(0, 0, 0, 255), stroke_width=max(2, font_size // 16))
-            cy += font_size + 4
+                      stroke_fill=(0, 0, 0, 255), stroke_width=max(2, fs // 16))
+            cy += fs + 4
 
     if top:
-        draw_meme_text(draw, top, font_size + 10, font)
+        draw_meme_text(draw, top, h // 5, font, font_size)
     if bottom:
-        draw_meme_text(draw, bottom, h - font_size - 10, font)
+        draw_meme_text(draw, bottom, h - h // 5, font, font_size)
 
     return Image.alpha_composite(img, txt_layer)
 
@@ -2274,6 +2290,174 @@ def _smart_resize(img, params):
     return ImageOps.fit(img, (width, height), Image.LANCZOS, centering=(0.5, 0.5))
 
 
+
+def _svg_trace(img, params):
+    """Convert bitmap image to SVG using potrace."""
+    # Convert to 1-bit BMP for potrace
+    threshold = int(params.get("threshold", 128))
+    color = str(params.get("color", "#000000"))
+    detail = str(params.get("detail", "normal"))  # low, normal, high
+
+    # Map detail to turdsize (suppress speckles smaller than this)
+    turd_map = {"low": 10, "normal": 2, "high": 0}
+    turdsize = turd_map.get(detail, 2)
+
+    # Convert to grayscale then threshold to 1-bit
+    gray = img.convert("L")
+    bw = gray.point(lambda x: 0 if x < threshold else 255, "1")
+
+    with _tempfile.NamedTemporaryFile(suffix=".bmp", delete=False) as tmp_bmp:
+        bw.save(tmp_bmp.name, "BMP")
+        bmp_path = tmp_bmp.name
+
+    svg_path = bmp_path.replace(".bmp", ".svg")
+
+    try:
+        cmd = [
+            "potrace", bmp_path,
+            "-s",  # SVG output
+            "-o", svg_path,
+            "-t", str(turdsize),
+            "-C", color,
+        ]
+
+        # Optimization level
+        alphamax = params.get("smoothness", 1.0)
+        cmd.extend(["-a", str(float(alphamax))])
+
+        result = _subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+
+        if result.returncode != 0:
+            raise ValueError(f"potrace failed: {result.stderr}")
+
+        with open(svg_path, "r") as f:
+            svg_content = f.read()
+
+        # Return SVG as string (not an image — special handling needed)
+        # Store SVG in a temporary attribute for the route handler
+        img._svg_output = svg_content
+        return img
+
+    finally:
+        import os
+        try:
+            os.unlink(bmp_path)
+        except Exception:
+            pass
+        try:
+            os.unlink(svg_path)
+        except Exception:
+            pass
+
+
+def _svg_to_png(img, params):
+    """Render SVG content to PNG image."""
+    # This is handled specially by the route — it takes SVG input, not image
+    # When called via pipeline, it's a no-op (image is already raster)
+    return img
+
+
+def _svg_pattern(img, params):
+    """Generate SVG pattern and overlay on image or return standalone."""
+    pattern_type = str(params.get("pattern", "dots"))  # dots, lines, grid, waves, diamonds, hexagons
+    size = int(params.get("size", 20))
+    color = str(params.get("color", "#000000"))
+    opacity = float(params.get("opacity", 0.3))
+    bg_color = params.get("bg_color", None)
+
+    w, h = img.size
+
+    dwg = svgwrite.Drawing(size=(f"{w}px", f"{h}px"), profile="tiny")
+
+    # Background
+    if bg_color:
+        dwg.add(dwg.rect(insert=(0, 0), size=(w, h), fill=bg_color))
+
+    # Pattern definitions
+    if pattern_type == "dots":
+        for y in range(0, h, size):
+            for x in range(0, w, size):
+                dwg.add(dwg.circle(
+                    center=(x + size//2, y + size//2),
+                    r=size//4,
+                    fill=color,
+                    opacity=opacity
+                ))
+
+    elif pattern_type == "lines":
+        spacing = size
+        for i in range(0, w + h, spacing):
+            dwg.add(dwg.line(
+                start=(i, 0), end=(0, i),
+                stroke=color, stroke_width=1, opacity=opacity
+            ))
+
+    elif pattern_type == "grid":
+        for x in range(0, w, size):
+            dwg.add(dwg.line(
+                start=(x, 0), end=(x, h),
+                stroke=color, stroke_width=1, opacity=opacity
+            ))
+        for y in range(0, h, size):
+            dwg.add(dwg.line(
+                start=(0, y), end=(w, y),
+                stroke=color, stroke_width=1, opacity=opacity
+            ))
+
+    elif pattern_type == "waves":
+        import math
+        amplitude = size // 2
+        for y_off in range(0, h, size):
+            points = []
+            for x in range(0, w + 1, 2):
+                y = y_off + amplitude * math.sin(x * math.pi / size)
+                points.append((x, y))
+            dwg.add(dwg.polyline(
+                points=points,
+                stroke=color, fill="none", stroke_width=1.5, opacity=opacity
+            ))
+
+    elif pattern_type == "diamonds":
+        half = size // 2
+        for y in range(0, h, size):
+            for x in range(0, w, size):
+                cx, cy = x + half, y + half
+                pts = [(cx, cy - half), (cx + half, cy), (cx, cy + half), (cx - half, cy)]
+                dwg.add(dwg.polygon(
+                    points=pts,
+                    stroke=color, fill="none", stroke_width=1, opacity=opacity
+                ))
+
+    elif pattern_type == "hexagons":
+        import math
+        r = size // 2
+        h_step = int(r * 1.5)
+        w_step = int(r * math.sqrt(3))
+        row = 0
+        for y in range(0, h + h_step, h_step):
+            offset = w_step // 2 if row % 2 else 0
+            for x in range(offset, w + w_step, w_step):
+                pts = []
+                for i in range(6):
+                    angle = math.pi / 3 * i - math.pi / 6
+                    pts.append((x + r * math.cos(angle), y + r * math.sin(angle)))
+                dwg.add(dwg.polygon(
+                    points=pts,
+                    stroke=color, fill="none", stroke_width=1, opacity=opacity
+                ))
+            row += 1
+
+    # Render SVG to PNG and composite onto image
+    svg_str = dwg.tostring()
+    png_data = cairosvg.svg2png(bytestring=svg_str.encode(), output_width=w, output_height=h)
+    pattern_img = Image.open(io.BytesIO(png_data)).convert("RGBA")
+
+    # Composite pattern onto original image
+    base = img.convert("RGBA")
+    result = Image.alpha_composite(base, pattern_img)
+    return result.convert("RGB")
+
+
 PIPELINE_FUNCS = {
     'resize': _resize, 'crop': _crop, 'rotate': _rotate,
     'blur': _blur, 'sharpen': _sharpen,
@@ -2304,6 +2488,12 @@ PIPELINE_FUNCS = {
     'split-tone': _split_tone,
     'color-grade': _color_grade,
     'smart-resize': _smart_resize,
+    'svg-trace': _svg_trace,
+    'svg-pattern': _svg_pattern,
+    'svg_trace': _svg_trace,
+    'svg_pattern': _svg_pattern,
+    'svg-to-png': _svg_to_png,
+    'svg_to_png': _svg_to_png,
 }
 
 
@@ -2496,6 +2686,18 @@ TOOL_REGISTRY = {
         'description': 'Set image transparency / remove background color to transparent',
         'params': {'opacity': 'float (0.0-1.0)', 'remove_color': 'hex string (color to make transparent)', 'tolerance': 'int (1-100)'},
     },
+    'svg-trace': {
+        'description': 'Convert bitmap image to SVG vector art using potrace',
+        'params': {'threshold': 'int (0-255)', 'color': 'hex', 'detail': 'low|normal|high', 'smoothness': 'float (0-1.5)'},
+    },
+    'svg-to-png': {
+        'description': 'Render SVG content to PNG image',
+        'params': {'svg': 'string (raw SVG)', 'width': 'int', 'height': 'int', 'scale': 'float'},
+    },
+    'svg-pattern': {
+        'description': 'Generate SVG pattern overlay on image',
+        'params': {'pattern': 'dots|lines|grid|waves|diamonds|hexagons', 'size': 'int', 'color': 'hex', 'opacity': 'float 0-1'},
+    },
 }
 
 
@@ -2503,7 +2705,7 @@ TOOL_REGISTRY = {
 # AI WORKFLOW GENERATOR
 # ============================================================
 
-OPENROUTER_KEY = os.environ.get('OPENROUTER_API_KEY', '')
+OPENROUTER_KEY = os.environ.get('OPENROUTER_KEY', '')
 
 SYSTEM_PROMPT = """You are an image processing pipeline generator. Given a natural language description of how to modify an image, output a JSON array of processing steps.
 
@@ -2943,7 +3145,7 @@ def v1_batch():
 
 
 # Admin endpoints
-ADMIN_SECRET = os.environ.get("LP_ADMIN_SECRET", "")
+ADMIN_SECRET = os.environ.get('LP_ADMIN_SECRET', 'change-me')
 
 @app.route("/api/v1/keys/create", methods=["POST"])
 def create_api_key_endpoint():
@@ -3010,6 +3212,123 @@ def v1_list_fonts():
         "categories": categories,
         "count": len(families),
         "aliases": {"sans": "roboto", "serif": "noto-serif", "mono": "fira-code", "bold": "roboto-bold", "impact": "roboto-black"},
+    })
+
+
+
+# --- SVG Tool Routes ---
+
+@app.route('/api/v1/svg-trace', methods=['POST'])
+@limiter.limit("20/minute")
+@require_api_key
+def api_v1_svg_trace():
+    """Convert bitmap image to SVG vector art."""
+    img = get_image_from_request()
+    if img is None:
+        return error('No image provided')
+
+    p = get_params()
+    threshold = int(p.get("threshold", 128))
+    color = str(p.get("color", "#000000"))
+    detail = str(p.get("detail", "normal"))
+    smoothness = float(p.get("smoothness", 1.0))
+
+    # Convert to grayscale then threshold
+    gray = img.convert("L")
+    bw = gray.point(lambda x: 0 if x < threshold else 255, "1")
+
+    with _tempfile.NamedTemporaryFile(suffix=".bmp", delete=False) as tmp_bmp:
+        bw.save(tmp_bmp.name, "BMP")
+        bmp_path = tmp_bmp.name
+
+    svg_path = bmp_path.replace(".bmp", ".svg")
+
+    try:
+        turd_map = {"low": 10, "normal": 2, "high": 0}
+        turdsize = turd_map.get(detail, 2)
+
+        cmd = ["potrace", bmp_path, "-s", "-o", svg_path, "-t", str(turdsize), "-C", color, "-a", str(smoothness)]
+        result = _subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+
+        if result.returncode != 0:
+            return error(f"Tracing failed: {result.stderr[:200]}")
+
+        with open(svg_path, "r") as f:
+            svg_content = f.read()
+
+        # Also generate a PNG preview
+        png_data = cairosvg.svg2png(bytestring=svg_content.encode(), output_width=img.size[0], output_height=img.size[1])
+        preview_b64 = base64.b64encode(png_data).decode()
+
+        return jsonify({
+            "svg": svg_content,
+            "preview_base64": preview_b64,
+            "size": {"width": img.size[0], "height": img.size[1]},
+            "svg_bytes": len(svg_content),
+        })
+    except Exception as e:
+        return error(f"SVG trace failed: {str(e)}")
+    finally:
+        import os
+        for p in [bmp_path, svg_path]:
+            try:
+                os.unlink(p)
+            except Exception:
+                pass
+
+
+@app.route('/api/v1/svg-to-png', methods=['POST'])
+@limiter.limit("30/minute")
+@require_api_key
+def api_v1_svg_to_png():
+    """Render SVG content to PNG image."""
+    p = get_params()
+    svg_content = p.get("svg", "")
+
+    if not svg_content:
+        return error("No SVG content provided (pass 'svg' parameter)")
+
+    width = p.get("width")
+    height = p.get("height")
+    scale = float(p.get("scale", 1.0))
+
+    try:
+        kwargs = {}
+        if width:
+            kwargs["output_width"] = int(width)
+        if height:
+            kwargs["output_height"] = int(height)
+        if scale != 1.0 and not width and not height:
+            kwargs["scale"] = scale
+
+        png_data = cairosvg.svg2png(bytestring=svg_content.encode(), **kwargs)
+        img = Image.open(io.BytesIO(png_data))
+
+        return jsonify({
+            "image_base64": image_to_base64(img.convert("RGB")),
+            "size": {"width": img.size[0], "height": img.size[1]},
+            "format": "PNG",
+        })
+    except Exception as e:
+        return error(f"SVG render failed: {str(e)}")
+
+
+@app.route('/api/v1/svg-pattern', methods=['POST'])
+@limiter.limit("30/minute")
+@require_api_key
+def api_v1_svg_pattern():
+    """Generate SVG pattern overlay on image."""
+    img = get_image_from_request()
+    if img is None:
+        return error('No image provided')
+
+    p = get_params()
+    result = _svg_pattern(img, p)
+
+    return jsonify({
+        "image_base64": image_to_base64(result),
+        "size": {"width": result.size[0], "height": result.size[1]},
+        "pattern": p.get("pattern", "dots"),
     })
 
 
