@@ -2710,14 +2710,25 @@ OPENROUTER_KEY = os.environ.get('OPENROUTER_KEY', '')
 SYSTEM_PROMPT = """You are an image processing pipeline generator. Given a natural language description of how to modify an image, output a JSON array of processing steps.
 
 Available tools and their parameters:
+
+BASIC TRANSFORMS:
 - resize: {width: int, height: int, mode: "contain"|"cover"|"stretch"}
 - crop: {x: int, y: int, width: int, height: int}
 - rotate: {angle: float, flip_h: bool, flip_v: bool}
-- blur: {radius: float (1-50)}
-- sharpen: {amount: float (0.5-5.0)}
+- mirror: {direction: "horizontal"|"vertical"}
+- smart_resize: {width: int, height: int} — center-weighted smart crop
+
+ADJUSTMENTS:
 - brightness: {factor: float (0.1-3.0, 1.0=original)}
 - contrast: {factor: float (0.1-3.0, 1.0=original)}
 - saturation: {factor: float (0.0-3.0, 1.0=original)}
+- color_adjust: {red: float (0-2), green: float (0-2), blue: float (0-2)} — per-channel multiplier
+- hue_shift: {degrees: float (-180 to 180)}
+- levels: {black_point: int (0-255), white_point: int (0-255), gamma: float (0.1-5)}
+
+FILTERS & EFFECTS:
+- blur: {radius: float (1-50)}
+- sharpen: {amount: float (0.5-5.0)}
 - grayscale: {}
 - sepia: {intensity: float (0.0-1.0)}
 - invert: {}
@@ -2726,52 +2737,62 @@ Available tools and their parameters:
 - threshold: {level: int (0-255)}
 - edge_detect: {}
 - emboss: {}
-- vignette: {strength: float (0.0-1.0)}
-- watermark: {text: string, position: "top-left"|"top-right"|"center"|"bottom-left"|"bottom-right", opacity: int (0-255), font_size: int}
-- hue_shift: {degrees: float (-180 to 180)}
-- duotone: {dark_color: hex, light_color: hex}
-- halftone: {dot_size: int (4-20)}
+- solarize: {threshold: int (0-255)}
+- noise: {amount: float (0-1), type: "gaussian"|"salt_pepper"}
+- film_grain: {amount: float (0-1)} — cinematic film grain
+
+ARTISTIC:
 - oil_paint: {radius: int (2-8)}
 - sketch: {}
-- solarize: {threshold: int (0-255)}
-- mirror: {direction: "horizontal"|"vertical"}
+- halftone: {dot_size: int (4-20)}
+- duotone: {dark_color: hex, light_color: hex}
+- vintage: {intensity: float (0.0-1.0)} — vintage/retro look with warm tones
+- split_tone: {shadow_color: hex, highlight_color: hex, strength: float (0-1)}
+- color_grade: {lift_r: float, lift_g: float, lift_b: float, gamma_r: float, gamma_g: float, gamma_b: float, gain_r: float, gain_g: float, gain_b: float} — professional LGG color grading
+
+COMPOSITING:
+- vignette: {strength: float (0.0-1.0)}
+- shadow: {offset_x: int, offset_y: int, color: hex, blur: int} — drop shadow
 - tilt_shift: {blur: float (5-30), focus_position: float (0-1), focus_width: float (0.1-0.5)}
 - circle_crop: {}
 - border: {width: int (1-100), color: hex}
-- levels: {black_point: int (0-255), white_point: int (0-255), gamma: float (0.1-5)}
 - color_replace: {from_color: hex, to_color: hex, tolerance: int (1-100)}
-- noise: {amount: float (0-1), type: "gaussian"|"salt_pepper"}
-- text_overlay: {text: string, font_size: int (12-200), font: font_name, color: hex, opacity: int (0-255), align: left|center|right, shadow_color: hex, bg_color: hex, position: "top-left"|"top-center"|"top-right"|"center-left"|"center"|"center-right"|"bottom-left"|"bottom-center"|"bottom-right", x: int, y: int, rotation: float, stroke_color: hex, stroke_width: int (0-10)}
+
+TEXT & OVERLAYS:
+- text_overlay: {text: string, font_size: int (12-200), font: font_name, color: hex, opacity: int (0-255), align: left|center|right, shadow_color: hex, bg_color: hex, position: "top-left"|"top-center"|"top-right"|"center-left"|"center"|"center-right"|"bottom-left"|"bottom-center"|"bottom-right", x: int, y: int, rotation: float, stroke_color: hex, stroke_width: int (0-10), uppercase: bool}
+- watermark: {text: string, position: "top-left"|"top-right"|"center"|"bottom-left"|"bottom-right", opacity: int (0-255), font_size: int}
+- meme: {top_text: string, bottom_text: string, font_size: int} — impact-style meme text
+- badge: {text: string, position: top-left|top-right|bottom-left|bottom-right, bg_color: hex, shape: pill|rect|circle}
+- gradient_text: {text: string, font_size: int, font: font_name, color_start: hex, color_end: hex, direction: horizontal|vertical}
+- og_image: {title: string, subtitle: string, title_font: font, overlay_opacity: float} — social sharing image (1200x630)
 - transparency: {opacity: float (0-1), remove_color: hex (color to make transparent), tolerance: int (1-100)}
+
+SVG:
+- svg_pattern: {pattern: dots|lines|grid|waves|diamonds|hexagons, size: int, color: hex, opacity: float (0-1)} — geometric pattern overlay
+
+OUTPUT:
 - convert: {format: "PNG"|"JPEG"|"WEBP", quality: int (1-100)}
 - compress: {quality: int (1-100), format: "JPEG"|"WEBP"}
 - collage: {cols: int (1-6), rows: int (1-6), spacing: int, bg_color: hex}
-- meme: {top_text: string, bottom_text: string, font_size: int}
-- og_image: {title: string, subtitle: string, title_font: font, overlay_opacity: float}
-- gradient_text: {text: string, font_size: int, font: font, color_start: hex, color_end: hex, direction: horizontal|vertical}
-- badge: {text: string, position: top-left|top-right|bottom-left|bottom-right, bg_color: hex, shape: pill|rect|circle}
-- vintage: {intensity: float (0.0-1.0)}
-- split_tone: {shadow_color: hex, highlight_color: hex, strength: float}
-- color_grade: {lift_r: float, lift_g: float, lift_b: float, gamma_r: float, gamma_g: float, gamma_b: float, gain_r: float, gain_g: float, gain_b: float}
-- smart_resize: {width: int, height: int}
 
 Rules:
 1. Output ONLY a valid JSON array of steps. No explanation, no markdown.
-2. Each step: {"tool": "name", "params": {...}}
+2. Each step: {"tool": "tool_name", "params": {...}}
 3. Steps execute in order. Choose logical order.
-4. For "vintage" look: combine sepia + vignette + film grain adjustments
-5. For "professional": resize + contrast boost + sharpen
-6. Default resize to reasonable web sizes (800-1920px wide)
-7. Always end with convert/compress if user mentions format or file size
-8. When user says "add text", use text_overlay with appropriate styling
-9. For transparency/layers, use transparency tool. Always output PNG when transparency is needed.
-10. Use text_overlay for any text addition (titles, captions, labels, memes, etc.)
+4. Use underscores in tool names (text_overlay, not text-overlay).
+5. For "vintage" look: use the vintage tool, or combine sepia + vignette + film_grain.
+6. For "professional": resize + contrast boost + sharpen + color_grade.
+7. Default resize to reasonable web sizes (800-1920px wide).
+8. Always end with convert/compress if user mentions format or file size.
+9. When user says "add text", use text_overlay with appropriate styling.
+10. For memes, use the meme tool. For badges/labels, use badge.
+11. For gradient colored text, use gradient_text.
+12. For cinematic/film looks, combine color_grade + film_grain + split_tone.
+13. For social media images, use og_image or resize to standard dimensions.
+14. For transparency/layers, use transparency tool. Always output PNG when transparency is needed.
 
 Example input: "Make it 800px wide, add a vintage look, and save as JPEG"
-Example output: [{"tool":"resize","params":{"width":800}},{"tool":"sepia","params":{"intensity":0.6}},{"tool":"vignette","params":{"strength":0.4}},{"tool":"contrast","params":{"factor":0.9}},{"tool":"compress","params":{"quality":85,"format":"JPEG"}}]
-
-Example input: "Resize and add text saying Hello World"
-Example output: [{"tool":"resize","params":{"width":800}},{"tool":"text_overlay","params":{"text":"Hello World","font_size":64,"color":"#ffffff","position":"center","stroke_color":"#000000","stroke_width":2}}]"""
+Example output: [{"tool": "resize", "params": {"width": 800}}, {"tool": "vintage", "params": {"intensity": 0.7}}, {"tool": "compress", "params": {"format": "JPEG", "quality": 85}}]"""
 
 
 @app.route('/api/generate-workflow', methods=['POST'])
