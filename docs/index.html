@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation | launch.pics</title>
+    <meta name="description" content="launch.pics Image Processing API — 35+ tools for resizing, cropping, filtering, and transforming images via REST API. Pipelines, batch processing, and AI-powered workflows.">
+    <link rel="canonical" href="https://launch.pics/docs/">
+    <meta property="og:title" content="launch.pics API Documentation">
+    <meta property="og:description" content="35+ image processing tools as a REST API. Resize, crop, filter, watermark, and more. AI-powered pipeline generation.">
+    <meta property="og:url" content="https://launch.pics/docs/">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://launch.pics/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="launch.pics API Documentation">
+    <meta name="twitter:description" content="35+ image processing tools as a REST API.">
+    <meta name="twitter:image" content="https://launch.pics/og-image.png">
+    <style>
+        :root {
+            --bg: #0f0a1a;
+            --surface: #1a1128;
+            --surface2: #231a33;
+            --border: rgba(139,92,246,0.15);
+            --purple: #a78bfa;
+            --purple-bright: #c4b5fd;
+            --green: #4ade80;
+            --blue: #60a5fa;
+            --orange: #fb923c;
+            --red: #f87171;
+            --yellow: #fbbf24;
+            --text: #e2e8f0;
+            --text-dim: #94a3b8;
+            --code-bg: #0d0817;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+        }
+        a { color: var(--purple); text-decoration: none; }
+        a:hover { color: var(--purple-bright); }
+        code {
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.9em;
+        }
+        .nav {
+            padding: 16px 32px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            z-index: 100;
+        }
+        .nav-brand { font-weight: 700; font-size: 1.1em; color: var(--purple); }
+        .nav a { color: var(--text-dim); font-size: 0.9em; }
+        .nav a:hover { color: var(--text); }
+        .layout {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            max-width: 1400px;
+            margin: 0 auto;
+            min-height: calc(100vh - 60px);
+        }
+        .sidebar {
+            border-right: 1px solid var(--border);
+            padding: 24px 16px;
+            position: sticky;
+            top: 60px;
+            height: calc(100vh - 60px);
+            overflow-y: auto;
+        }
+        .sidebar h3 {
+            font-size: 0.75em;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            margin: 20px 0 8px;
+        }
+        .sidebar h3:first-child { margin-top: 0; }
+        .sidebar a {
+            display: block;
+            padding: 4px 12px;
+            color: var(--text-dim);
+            font-size: 0.85em;
+            border-radius: 6px;
+            transition: all 0.15s;
+        }
+        .sidebar a:hover { color: var(--text); background: var(--surface); }
+        .main {
+            padding: 40px 48px;
+            max-width: 900px;
+        }
+        h1 {
+            font-size: 2.2em;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--purple), var(--blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        h2 {
+            font-size: 1.5em;
+            margin: 48px 0 16px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+            color: var(--text);
+        }
+        h3 {
+            font-size: 1.15em;
+            margin: 32px 0 12px;
+            color: var(--purple-bright);
+        }
+        .subtitle { color: var(--text-dim); font-size: 1.1em; margin-bottom: 32px; }
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 600;
+        }
+        .badge-get { background: rgba(96,165,250,0.15); color: var(--blue); }
+        .badge-post { background: rgba(74,222,128,0.15); color: var(--green); }
+        .endpoint {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin: 16px 0;
+            overflow: hidden;
+        }
+        .endpoint-header {
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+        .endpoint-header:hover { background: var(--surface2); }
+        .endpoint-body {
+            padding: 0 20px 20px;
+            border-top: 1px solid var(--border);
+        }
+        .endpoint-body p { margin: 12px 0; color: var(--text-dim); }
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 20px;
+            overflow-x: auto;
+            font-size: 0.85em;
+            line-height: 1.6;
+            margin: 12px 0;
+        }
+        .param-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 0.9em;
+        }
+        .param-table th {
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 2px solid var(--border);
+            color: var(--text-dim);
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .param-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+        .param-name { color: var(--purple-bright); font-family: 'SF Mono', monospace; }
+        .param-type { color: var(--orange); font-size: 0.85em; }
+        .param-req { color: var(--red); font-size: 0.8em; }
+        .param-opt { color: var(--text-dim); font-size: 0.8em; }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .feature-card h4 { color: var(--purple-bright); margin-bottom: 8px; }
+        .feature-card p { color: var(--text-dim); font-size: 0.9em; }
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 8px;
+            margin: 16px 0;
+        }
+        .tool-chip {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.8em;
+            color: var(--text-dim);
+        }
+        .tool-chip:hover { border-color: var(--purple); color: var(--purple-bright); }
+        .base-url {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-family: 'SF Mono', monospace;
+            color: var(--green);
+            margin: 16px 0;
+        }
+        .note {
+            background: rgba(139,92,246,0.08);
+            border-left: 3px solid var(--purple);
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+            margin: 16px 0;
+            font-size: 0.9em;
+            color: var(--text-dim);
+        }
+        .copy-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            float: right;
+        }
+        .copy-btn:hover { color: var(--text); border-color: var(--purple); }
+        @media (max-width: 768px) {
+            .layout { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+            .main { padding: 24px 16px; }
+            h1 { font-size: 1.8em; }
+        }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    </style>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebAPI",
+        "name": "launch.pics Image Processing API",
+        "description": "REST API with 35+ image processing tools — resize, crop, filter, watermark, and more. Includes AI-powered pipeline generation and batch processing.",
+        "url": "https://launch.pics/docs/",
+        "documentation": "https://launch.pics/docs/",
+        "provider": {
+            "@type": "Organization",
+            "name": "launch.pics"
+        }
+    }
+    </script>
+</head>
+<body>
+    <nav class="nav">
+        <a href="/" class="nav-brand">launch.pics</a>
+        <a href="/">Home</a>
+        <a href="/tools/">Tools</a>
+        <a href="/pipeline/">Pipeline</a>
+        <a href="/docs/" style="color:var(--purple-bright)">API Docs</a>
+    </nav>
+
+    <div class="layout">
+        <aside class="sidebar">
+            <h3>Getting Started</h3>
+            <a href="#overview">Overview</a>
+            <a href="#authentication">Authentication</a>
+            <a href="#base-url">Base URL</a>
+            <a href="#rate-limits">Rate Limits</a>
+            <a href="#errors">Error Handling</a>
+
+            <h3>Endpoints</h3>
+            <a href="#health">Health Check</a>
+            <a href="#list-tools">List Tools</a>
+            <a href="#process-image">Process Image</a>
+            <a href="#pipeline">Pipeline</a>
+            <a href="#generate-workflow">Generate Workflow</a>
+            <a href="#batch">Batch Processing</a>
+            <a href="#usage">Key Usage</a>
+
+            <h3>Reference</h3>
+            <a href="#tools-reference">All Tools</a>
+            <a href="#examples">Code Examples</a>
+        </aside>
+
+        <main class="main">
+            <h1>Image Processing API</h1>
+            <p class="subtitle">35+ image tools as a REST API. Resize, crop, filter, watermark, compose pipelines, and generate workflows with AI.</p>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>35+ Tools</h4>
+                    <p>Resize, crop, blur, sharpen, watermark, color adjust, effects, and more</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Pipelines</h4>
+                    <p>Chain multiple tools in a single request — up to 20 steps</p>
+                </div>
+                <div class="feature-card">
+                    <h4>AI Workflows</h4>
+                    <p>Describe what you want in plain English, get a ready-to-run pipeline</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Batch Processing</h4>
+                    <p>Process up to 10 images in one call with the same tool or pipeline</p>
+                </div>
+            </div>
+
+            <!-- GETTING STARTED -->
+            <h2 id="overview">Overview</h2>
+            <p>The launch.pics API lets you process images programmatically. Send an image (as a file upload or base64), choose a tool and parameters, and get the result back as base64 JSON or binary image.</p>
+
+            <h2 id="authentication">Authentication</h2>
+            <p>All <code>/api/v1/</code> processing endpoints require an API key. Pass it via the <code>X-API-Key</code> header:</p>
+            <pre><code>curl -X POST https://launch.pics/api/v1/resize \
+  -H "X-API-Key: lp_your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{"image_base64": "...", "width": 800}'</code></pre>
+            <div class="note">The <code>/api/v1/health</code> and <code>/api/v1/tools</code> endpoints are public — no API key needed.</div>
+
+            <h2 id="base-url">Base URL</h2>
+            <div class="base-url">https://launch.pics/api/v1</div>
+
+            <h2 id="rate-limits">Rate Limits</h2>
+            <table class="param-table">
+                <tr><th>Endpoint</th><th>Limit</th></tr>
+                <tr><td>Single tool processing</td><td>200 requests/hour</td></tr>
+                <tr><td>Pipeline</td><td>100 requests/hour</td></tr>
+                <tr><td>Batch</td><td>50 requests/hour</td></tr>
+                <tr><td>AI workflow generation</td><td>30 requests/hour</td></tr>
+            </table>
+            <p>Rate limit headers are included in responses: <code>X-RateLimit-Remaining</code>, <code>X-RateLimit-Reset</code>.</p>
+
+            <h2 id="errors">Error Handling</h2>
+            <p>Errors return JSON with an <code>error</code> field:</p>
+            <pre><code>// 400 Bad Request
+{"error": "No image provided. Send as multipart file (field: image) or JSON (image_base64)."}
+
+// 401 Unauthorized
+{"error": "API key required. Get one at https://launch.pics/docs/"}
+
+// 403 Forbidden
+{"error": "Invalid API key"}
+
+// 404 Not Found
+{"error": "Unknown tool: foo", "available": ["resize", "crop", ...]}
+
+// 429 Too Many Requests
+{"error": "Rate limit exceeded"}
+
+// 500 Internal Server Error
+{"error": "Processing failed: details..."}</code></pre>
+
+            <!-- ENDPOINTS -->
+            <h2 id="health">Health Check</h2>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="badge badge-get">GET</span>
+                    <code>/api/v1/health</code>
+                </div>
+                <div class="endpoint-body">
+                    <p>Check API status and discover available endpoints. No authentication required.</p>
+                    <pre><code>curl https://launch.pics/api/v1/health</code></pre>
+                    <pre><code>{
+  "status": "ok",
+  "version": "1.0.0",
+  "api": "launch.pics Image Processing API",
+  "tools_count": 38,
+  "endpoints": {
+    "docs": "https://launch.pics/docs/",
+    "tools": "/api/v1/tools",
+    "process": "/api/v1/{tool}",
+    "pipeline": "/api/v1/pipeline",
+    "generate": "/api/v1/generate-workflow",
+    "batch": "/api/v1/batch"
+  }
+}</code></pre>
+                </div>
+            </div>
+
+            <h2 id="list-tools">List Tools</h2>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="badge badge-get">GET</span>
+                    <code>/api/v1/tools</code>
+                </div>
+                <div class="endpoint-body">
+                    <p>List all available tools with their parameter specifications. No authentication required.</p>
+                    <pre><code>curl https://launch.pics/api/v1/tools</code></pre>
+                </div>
+            </div>
+
+            <h2 id="process-image">Process Image</h2>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="badge badge-post">POST</span>
+                    <code>/api/v1/{tool_name}</code>
+                </div>
+                <div class="endpoint-body">
+                    <p>Apply a single tool to an image. Accepts both JSON (base64) and multipart form uploads.</p>
+
+                    <h3>Input Options</h3>
+                    <p><strong>Option A: JSON body</strong></p>
+                    <pre><code>curl -X POST https://launch.pics/api/v1/resize \
+  -H "X-API-Key: lp_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "image_base64": "iVBORw0KGgo...",
+    "width": 800,
+    "height": 600,
+    "mode": "contain"
+  }'</code></pre>
+
+                    <p><strong>Option B: Multipart form data</strong></p>
+                    <pre><code>curl -X POST https://launch.pics/api/v1/resize \
+  -H "X-API-Key: lp_your_key" \
+  -F "image=@photo.jpg" \
+  -F "width=800" \
+  -F "mode=contain"</code></pre>
+
+                    <h3>Output</h3>
+                    <p>Default response is JSON with base64-encoded image:</p>
+                    <pre><code>{
+  "image_base64": "iVBORw0KGgo...",
+  "format": "PNG",
+  "size": {"width": 800, "height": 600},
+  "tool": "resize"
+}</code></pre>
+                    <p>For binary image response, set <code>Accept: image/png</code> (or <code>image/jpeg</code>, <code>image/webp</code>):</p>
+                    <pre><code>curl -X POST https://launch.pics/api/v1/resize \
+  -H "X-API-Key: lp_your_key" \
+  -H "Accept: image/png" \
+  -F "image=@photo.jpg" \
+  -F "width=800" \
+  --output resized.png</code></pre>
+                </div>
+            </div>
+
+            <h2 id="pipeline">Pipeline</h2>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="badge badge-post">POST</span>
+                    <code>/api/v1/pipeline</code>
+                </div>
+                <div class="endpoint-body">
+                    <p>Chain multiple tools in sequence. Steps execute in order, each receiving the output of the previous step. Maximum 20 steps.</p>
+
+                    <h3>Request</h3>
+                    <pre><code>curl -X POST https://launch.pics/api/v1/pipeline \
+  -H "X-API-Key: lp_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "image_base64": "iVBORw0KGgo...",
+    "steps": [
+      {"tool": "resize", "params": {"width": 800}},
+      {"tool": "contrast", "params": {"factor": 1.3}},
+      {"tool": "sharpen", "params": {"amount": 1.5}},
+      {"tool": "watermark", "params": {"text": "© 2026", "position": "bottom-right", "opacity": 128}},
+      {"tool": "compress", "params": {"quality": 85, "format": "WEBP"}}
+    ],
+    "output_format": "WEBP",
+    "quality": 85
+  }'</code></pre>
+
+                    <h3>Response</h3>
+                    <pre><code>{
+  "image_base64": "UklGRp4A...",
+  "format": "WEBP",
+  "original_size": {"width": 3000, "height": 2000},
+  "final_size": {"width": 800, "height": 533},
+  "steps_completed": [
+    {"step": 0, "tool": "resize", "status": "ok", "size": {"width": 800, "height": 533}},
+    {"step": 1, "tool": "contrast", "status": "ok", "size": {"width": 800, "height": 533}},
+    {"step": 2, "tool": "sharpen", "status": "ok", "size": {"width": 800, "height": 533}},
+    {"step": 3, "tool": "watermark", "status": "ok", "size": {"width": 800, "height": 533}},
+    {"step": 4, "tool": "compress", "status": "ok", "size": {"width": 800, "height": 533}}
+  ]
+}</code></pre>
+                </div>
+            </div>
+
+            <h2 id="generate-workflow">Generate Workflow (AI)</h2>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="badge badge-post">POST</span>
+                    <code>/api/v1/generate-workflow</code>
+                </div>
+                <div class="endpoint-body">
+                    <p>Describe what you want in natural language, and AI generates a pipeline configuration you can execute with <code>/api/v1/pipeline</code>.</p>
+
+                    <h3>Request</h3>
+                    <pre><code>curl -X POST https://launch.pics/api/v1/generate-workflow \
+  -H "X-API-Key: lp_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{"description": "Make it 800px wide, add a vintage film look, and compress as JPEG"}'</code></pre>
+
+                    <h3>Response</h3>
+                    <pre><code>{
+  "description": "Make it 800px wide, add a vintage film look, and compress as JPEG",
+  "steps": [
+    {"tool": "resize", "params": {"width": 800}},
+    {"tool": "sepia", "params": {"intensity": 0.6}},
+    {"tool": "vignette", "params": {"strength": 0.4}},
+    {"tool": "contrast", "params": {"factor": 0.9}},
+    {"tool": "film-grain", "params": {"amount": 0.3}},
+    {"tool": "compress", "params": {"quality": 85, "format": "JPEG"}}
+  ],
+  "step_count": 6
+}</code></pre>
+                    <div class="note">The response contains a <code>steps</code> array that can be passed directly to the <code>/api/v1/pipeline</code> endpoint along with your image.</div>
+                </div>
+            </div>
+
+            <h2 id="batch">Batch Processing</h2>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="badge badge-post">POST</span>
+                    <code>/api/v1/batch</code>
+                </div>
+                <div class="endpoint-body">
+                    <p>Process up to 10 images with the same tool or pipeline in a single request.</p>
+
+                    <h3>Single tool on multiple images</h3>
+                    <pre><code>curl -X POST https://launch.pics/api/v1/batch \
+  -H "X-API-Key: lp_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "images": ["base64_image_1...", "base64_image_2...", "base64_image_3..."],
+    "tool": "resize",
+    "params": {"width": 400},
+    "output_format": "WEBP",
+    "quality": 80
+  }'</code></pre>
+
+                    <h3>Pipeline on multiple images</h3>
+                    <pre><code>{
+  "images": ["base64_1...", "base64_2..."],
+  "steps": [
+    {"tool": "resize", "params": {"width": 800}},
+    {"tool": "sharpen", "params": {"amount": 1.5}},
+    {"tool": "compress", "params": {"quality": 85, "format": "JPEG"}}
+  ]
+}</code></pre>
+
+                    <h3>Response</h3>
+                    <pre><code>{
+  "results": [
+    {"index": 0, "image_base64": "...", "size": {"width": 400, "height": 300}},
+    {"index": 1, "image_base64": "...", "size": {"width": 400, "height": 267}},
+    {"index": 2, "error": "Invalid image: cannot identify image file"}
+  ],
+  "processed": 2,
+  "errors": 1,
+  "format": "WEBP"
+}</code></pre>
+                </div>
+            </div>
+
+            <h2 id="usage">Key Usage</h2>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="badge badge-get">GET</span>
+                    <code>/api/v1/keys/usage</code>
+                </div>
+                <div class="endpoint-body">
+                    <p>Check your API key usage statistics.</p>
+                    <pre><code>curl https://launch.pics/api/v1/keys/usage \
+  -H "X-API-Key: lp_your_key"</code></pre>
+                    <pre><code>{
+  "name": "my-app",
+  "requests": 1247,
+  "rate_limit": "200/hour",
+  "created": "2026-04-01T21:00:00Z",
+  "last_used": "2026-04-01T22:30:00Z"
+}</code></pre>
+                </div>
+            </div>
+
+            <!-- TOOLS REFERENCE -->
+            <h2 id="tools-reference">All Tools Reference</h2>
+            <p>Every tool can be used as a standalone endpoint (<code>/api/v1/{tool}</code>) or as a step in a pipeline.</p>
+
+            <h3>Image Manipulation</h3>
+            <table class="param-table">
+                <tr><th>Tool</th><th>Description</th><th>Key Params</th></tr>
+                <tr><td class="param-name">resize</td><td>Resize image</td><td><code>width</code>, <code>height</code>, <code>mode</code> (contain|cover|stretch)</td></tr>
+                <tr><td class="param-name">crop</td><td>Crop to region</td><td><code>x</code>, <code>y</code>, <code>width</code>, <code>height</code></td></tr>
+                <tr><td class="param-name">rotate</td><td>Rotate/flip</td><td><code>angle</code>, <code>flip_h</code>, <code>flip_v</code></td></tr>
+                <tr><td class="param-name">mirror</td><td>Mirror image</td><td><code>direction</code> (horizontal|vertical)</td></tr>
+                <tr><td class="param-name">circle-crop</td><td>Crop to circle</td><td>none</td></tr>
+                <tr><td class="param-name">border</td><td>Add border</td><td><code>width</code>, <code>color</code> (hex)</td></tr>
+            </table>
+
+            <h3>Color & Adjustment</h3>
+            <table class="param-table">
+                <tr><th>Tool</th><th>Description</th><th>Key Params</th></tr>
+                <tr><td class="param-name">brightness</td><td>Adjust brightness</td><td><code>factor</code> (0.1-3.0, 1.0=original)</td></tr>
+                <tr><td class="param-name">contrast</td><td>Adjust contrast</td><td><code>factor</code> (0.1-3.0)</td></tr>
+                <tr><td class="param-name">saturation</td><td>Adjust saturation</td><td><code>factor</code> (0.0-3.0)</td></tr>
+                <tr><td class="param-name">hue-shift</td><td>Shift hue</td><td><code>degrees</code> (-180 to 180)</td></tr>
+                <tr><td class="param-name">levels</td><td>Input/output levels</td><td><code>black_point</code>, <code>white_point</code>, <code>gamma</code></td></tr>
+                <tr><td class="param-name">color-adjust</td><td>Temperature/tint</td><td><code>temperature</code>, <code>tint</code></td></tr>
+                <tr><td class="param-name">color-replace</td><td>Replace a color</td><td><code>from_color</code>, <code>to_color</code>, <code>tolerance</code></td></tr>
+                <tr><td class="param-name">grayscale</td><td>Convert to grayscale</td><td>none</td></tr>
+                <tr><td class="param-name">invert</td><td>Invert colors</td><td>none</td></tr>
+            </table>
+
+            <h3>Effects & Filters</h3>
+            <table class="param-table">
+                <tr><th>Tool</th><th>Description</th><th>Key Params</th></tr>
+                <tr><td class="param-name">blur</td><td>Gaussian blur</td><td><code>radius</code> (1-50)</td></tr>
+                <tr><td class="param-name">sharpen</td><td>Sharpen image</td><td><code>amount</code> (0.5-5.0)</td></tr>
+                <tr><td class="param-name">sepia</td><td>Sepia tone</td><td><code>intensity</code> (0.0-1.0)</td></tr>
+                <tr><td class="param-name">vignette</td><td>Edge darkening</td><td><code>strength</code> (0.0-1.0)</td></tr>
+                <tr><td class="param-name">film-grain</td><td>Film grain noise</td><td><code>amount</code> (0.0-1.0)</td></tr>
+                <tr><td class="param-name">pixelate</td><td>Pixelate</td><td><code>block_size</code> (2-50)</td></tr>
+                <tr><td class="param-name">posterize</td><td>Reduce colors</td><td><code>bits</code> (1-8)</td></tr>
+                <tr><td class="param-name">threshold</td><td>B&W threshold</td><td><code>level</code> (0-255)</td></tr>
+                <tr><td class="param-name">edge-detect</td><td>Detect edges</td><td>none</td></tr>
+                <tr><td class="param-name">emboss</td><td>Emboss effect</td><td>none</td></tr>
+                <tr><td class="param-name">solarize</td><td>Solarize</td><td><code>threshold</code> (0-255)</td></tr>
+                <tr><td class="param-name">duotone</td><td>Duotone effect</td><td><code>dark_color</code>, <code>light_color</code></td></tr>
+                <tr><td class="param-name">halftone</td><td>Halftone dots</td><td><code>dot_size</code> (4-20)</td></tr>
+                <tr><td class="param-name">oil-paint</td><td>Oil painting</td><td><code>radius</code> (2-8)</td></tr>
+                <tr><td class="param-name">sketch</td><td>Pencil sketch</td><td>none</td></tr>
+                <tr><td class="param-name">tilt-shift</td><td>Miniature effect</td><td><code>blur</code>, <code>focus_position</code>, <code>focus_width</code></td></tr>
+                <tr><td class="param-name">noise</td><td>Add noise</td><td><code>amount</code>, <code>type</code> (gaussian|salt_pepper)</td></tr>
+            </table>
+
+            <h3>Overlay & Compositing</h3>
+            <table class="param-table">
+                <tr><th>Tool</th><th>Description</th><th>Key Params</th></tr>
+                <tr><td class="param-name">text-overlay</td><td>Add text</td><td><code>text</code>, <code>font_size</code>, <code>color</code>, <code>position</code>, <code>rotation</code>, <code>stroke_color</code>, <code>stroke_width</code></td></tr>
+                <tr><td class="param-name">watermark</td><td>Text watermark</td><td><code>text</code>, <code>position</code>, <code>opacity</code>, <code>font_size</code></td></tr>
+                <tr><td class="param-name">shadow</td><td>Drop shadow</td><td><code>offset_x</code>, <code>offset_y</code>, <code>blur</code>, <code>color</code></td></tr>
+                <tr><td class="param-name">transparency</td><td>Set transparency</td><td><code>opacity</code>, <code>remove_color</code>, <code>tolerance</code></td></tr>
+            </table>
+
+            <h3>Format & Output</h3>
+            <table class="param-table">
+                <tr><th>Tool</th><th>Description</th><th>Key Params</th></tr>
+                <tr><td class="param-name">convert</td><td>Convert format</td><td><code>format</code> (PNG|JPEG|WEBP|GIF), <code>quality</code></td></tr>
+                <tr><td class="param-name">compress</td><td>Compress/optimize</td><td><code>quality</code> (1-100), <code>format</code> (JPEG|WEBP)</td></tr>
+            </table>
+
+            <!-- CODE EXAMPLES -->
+            <h2 id="examples">Code Examples</h2>
+
+            <h3>Python</h3>
+            <pre><code>import requests, base64
+
+API_KEY = "lp_your_key"
+BASE = "https://launch.pics/api/v1"
+
+# Read image and encode
+with open("photo.jpg", "rb") as f:
+    img_b64 = base64.b64encode(f.read()).decode()
+
+# Single tool
+r = requests.post(f"{BASE}/resize", json={
+    "image_base64": img_b64,
+    "width": 800,
+    "mode": "contain"
+}, headers={"X-API-Key": API_KEY})
+
+result = r.json()
+with open("resized.png", "wb") as f:
+    f.write(base64.b64decode(result["image_base64"]))
+
+# Pipeline
+r = requests.post(f"{BASE}/pipeline", json={
+    "image_base64": img_b64,
+    "steps": [
+        {"tool": "resize", "params": {"width": 800}},
+        {"tool": "sepia", "params": {"intensity": 0.6}},
+        {"tool": "vignette", "params": {"strength": 0.3}},
+        {"tool": "compress", "params": {"quality": 85, "format": "JPEG"}}
+    ]
+}, headers={"X-API-Key": API_KEY})</code></pre>
+
+            <h3>JavaScript / Node.js</h3>
+            <pre><code>const fs = require('fs');
+
+const API_KEY = 'lp_your_key';
+const BASE = 'https://launch.pics/api/v1';
+
+const imageBase64 = fs.readFileSync('photo.jpg').toString('base64');
+
+// Single tool
+const response = await fetch(`${BASE}/resize`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': API_KEY
+  },
+  body: JSON.stringify({
+    image_base64: imageBase64,
+    width: 800,
+    mode: 'contain'
+  })
+});
+
+const { image_base64, size } = await response.json();
+fs.writeFileSync('resized.png', Buffer.from(image_base64, 'base64'));
+
+// AI-generated workflow
+const workflow = await fetch(`${BASE}/generate-workflow`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
+  body: JSON.stringify({ description: 'Make it thumbnail-sized with a vintage look' })
+}).then(r => r.json());
+
+// Execute the generated workflow
+const result = await fetch(`${BASE}/pipeline`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
+  body: JSON.stringify({ image_base64: imageBase64, steps: workflow.steps })
+}).then(r => r.json());</code></pre>
+
+            <h3>cURL</h3>
+            <pre><code># Upload a file directly
+curl -X POST https://launch.pics/api/v1/resize \
+  -H "X-API-Key: lp_your_key" \
+  -F "image=@photo.jpg" \
+  -F "width=800" \
+  -F "mode=contain"
+
+# Get binary image back (pipe to file)
+curl -X POST https://launch.pics/api/v1/grayscale \
+  -H "X-API-Key: lp_your_key" \
+  -H "Accept: image/png" \
+  -F "image=@photo.jpg" \
+  --output grayscale.png</code></pre>
+
+            <div style="margin-top:48px; padding:24px; background:var(--surface); border:1px solid var(--border); border-radius:12px; text-align:center;">
+                <p style="color:var(--text-dim); margin-bottom:8px;">Ready to start?</p>
+                <p style="font-size:1.1em;">Contact <a href="mailto:andy@agentwire.email">andy@agentwire.email</a> to get your API key.</p>
+            </div>
+
+            <footer style="margin-top:48px; padding:24px 0; border-top:1px solid var(--border); color:var(--text-dim); font-size:0.85em;">
+                <p>&copy; 2026 launch.pics &mdash; Free image processing tools and API</p>
+            </footer>
+        </main>
+    </div>
+</body>
+</html>
