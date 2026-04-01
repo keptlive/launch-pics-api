@@ -283,6 +283,7 @@
             <h3>Endpoints</h3>
             <a href="#health">Health Check</a>
             <a href="#list-tools">List Tools</a>
+            <a href="#list-fonts">List Fonts</a>
             <a href="#process-image">Process Image</a>
             <a href="#pipeline">Pipeline</a>
             <a href="#generate-workflow">Generate Workflow</a>
@@ -296,11 +297,11 @@
 
         <main class="main">
             <h1>Image Processing API</h1>
-            <p class="subtitle">35+ image tools as a REST API. Resize, crop, filter, watermark, compose pipelines, and generate workflows with AI.</p>
+            <p class="subtitle">45+ image tools as a REST API. Resize, crop, filter, watermark, compose pipelines, and generate workflows with AI.</p>
 
             <div class="feature-grid">
                 <div class="feature-card">
-                    <h4>35+ Tools</h4>
+                    <h4>45+ Tools</h4>
                     <p>Resize, crop, blur, sharpen, watermark, color adjust, effects, and more</p>
                 </div>
                 <div class="feature-card">
@@ -398,6 +399,32 @@
                 <div class="endpoint-body">
                     <p>List all available tools with their parameter specifications. No authentication required.</p>
                     <pre><code>curl https://launch.pics/api/v1/tools</code></pre>
+                </div>
+            </div>
+
+            <h2 id="list-fonts">List Fonts</h2>
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="badge badge-get">GET</span>
+                    <code>/api/v1/fonts</code>
+                </div>
+                <div class="endpoint-body">
+                    <p>List all available fonts for text overlays, organized by category. No authentication required.</p>
+                    <pre><code>curl https://launch.pics/api/v1/fonts</code></pre>
+                    <p>Returns fonts organized into categories: sans-serif, serif, monospace, and display. Includes aliases like <code>sans</code>, <code>serif</code>, <code>mono</code>, <code>bold</code>, <code>impact</code> for convenience.</p>
+                    <p>Use font names in any text tool via the <code>font</code> parameter: <code>"font": "roboto-bold"</code></p>
+                    <h3>Popular Fonts</h3>
+                    <table class="param-table">
+                        <tr><th>Name</th><th>Category</th><th>Best For</th></tr>
+                        <tr><td class="param-name">roboto</td><td>Sans-serif</td><td>General purpose, clean UI text</td></tr>
+                        <tr><td class="param-name">roboto-bold</td><td>Sans-serif</td><td>Headlines, emphasis</td></tr>
+                        <tr><td class="param-name">open-sans</td><td>Sans-serif</td><td>Body text, readable at small sizes</td></tr>
+                        <tr><td class="param-name">lato</td><td>Sans-serif</td><td>Modern, elegant headings</td></tr>
+                        <tr><td class="param-name">lato-black</td><td>Display</td><td>Bold statements, headers</td></tr>
+                        <tr><td class="param-name">noto-serif</td><td>Serif</td><td>Classic, formal text</td></tr>
+                        <tr><td class="param-name">fira-code</td><td>Monospace</td><td>Code snippets, technical text</td></tr>
+                        <tr><td class="param-name">impact</td><td>Display</td><td>Memes, bold impact text</td></tr>
+                    </table>
                 </div>
             </div>
 
@@ -638,10 +665,24 @@
                 <tr><td class="param-name">noise</td><td>Add noise</td><td><code>amount</code>, <code>type</code> (gaussian|salt_pepper)</td></tr>
             </table>
 
+            <h3>Creative & AI</h3>
+            <table class="param-table">
+                <tr><th>Tool</th><th>Description</th><th>Key Params</th></tr>
+                <tr><td class="param-name">meme</td><td>Meme-style top/bottom text</td><td><code>top_text</code>, <code>bottom_text</code>, <code>font_size</code></td></tr>
+                <tr><td class="param-name">og-image</td><td>Open Graph image (1200x630)</td><td><code>title</code>, <code>subtitle</code>, <code>title_font</code>, <code>overlay_opacity</code></td></tr>
+                <tr><td class="param-name">gradient-text</td><td>Gradient-colored text</td><td><code>text</code>, <code>font</code>, <code>color_start</code>, <code>color_end</code>, <code>direction</code></td></tr>
+                <tr><td class="param-name">badge</td><td>Corner badge/label</td><td><code>text</code>, <code>position</code>, <code>bg_color</code>, <code>shape</code> (pill|rect|circle)</td></tr>
+                <tr><td class="param-name">vintage</td><td>Vintage/retro effect</td><td><code>intensity</code> (0.0-1.0)</td></tr>
+                <tr><td class="param-name">collage</td><td>Grid collage layout</td><td><code>cols</code>, <code>rows</code>, <code>spacing</code>, <code>bg_color</code></td></tr>
+                <tr><td class="param-name">split-tone</td><td>Split toning colors</td><td><code>shadow_color</code>, <code>highlight_color</code>, <code>strength</code></td></tr>
+                <tr><td class="param-name">color-grade</td><td>Professional LGG grading</td><td><code>lift_r/g/b</code>, <code>gamma_r/g/b</code>, <code>gain_r/g/b</code></td></tr>
+                <tr><td class="param-name">smart-resize</td><td>Smart center-crop resize</td><td><code>width</code>, <code>height</code></td></tr>
+            </table>
+
             <h3>Overlay & Compositing</h3>
             <table class="param-table">
                 <tr><th>Tool</th><th>Description</th><th>Key Params</th></tr>
-                <tr><td class="param-name">text-overlay</td><td>Add text</td><td><code>text</code>, <code>font_size</code>, <code>color</code>, <code>position</code>, <code>rotation</code>, <code>stroke_color</code>, <code>stroke_width</code></td></tr>
+                <tr><td class="param-name">text-overlay</td><td>Full text system</td><td><code>text</code>, <code>font</code>, <code>font_size</code>, <code>color</code>, <code>position</code>, <code>align</code>, <code>shadow_color</code>, <code>bg_color</code>, <code>bg_radius</code>, <code>stroke_color</code>, <code>uppercase</code></td></tr>
                 <tr><td class="param-name">watermark</td><td>Text watermark</td><td><code>text</code>, <code>position</code>, <code>opacity</code>, <code>font_size</code></td></tr>
                 <tr><td class="param-name">shadow</td><td>Drop shadow</td><td><code>offset_x</code>, <code>offset_y</code>, <code>blur</code>, <code>color</code></td></tr>
                 <tr><td class="param-name">transparency</td><td>Set transparency</td><td><code>opacity</code>, <code>remove_color</code>, <code>tolerance</code></td></tr>

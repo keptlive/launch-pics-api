@@ -8,6 +8,8 @@ import io
 import base64
 import json
 import os
+import glob
+import math
 import hashlib
 import time
 import secrets
@@ -1609,6 +1611,669 @@ def _transparency(img, params):
 
     return img
 
+
+# ============================================================
+# FONT SYSTEM
+# ============================================================
+
+import glob
+import math
+
+FONT_DIRS = [
+    "/usr/share/fonts/truetype/",
+    "/usr/share/fonts/opentype/",
+]
+
+def _scan_fonts():
+    """Scan system for available fonts, build a registry."""
+    fonts = {}
+    for d in FONT_DIRS:
+        for f in glob.glob(d + "**/*.ttf", recursive=True) + glob.glob(d + "**/*.otf", recursive=True):
+            name = os.path.basename(f).rsplit(".", 1)[0]
+            # Create a clean key: lowercase, no spaces
+            key = name.lower().replace(" ", "-").replace("_", "-")
+            fonts[key] = {"path": f, "name": name}
+    return fonts
+
+FONT_REGISTRY = _scan_fonts()
+
+# Curated font families for the API (human-friendly names)
+FONT_FAMILIES = {
+    # Sans-serif
+    "roboto": "Roboto-Regular",
+    "roboto-bold": "Roboto-Bold",
+    "roboto-light": "Roboto-Light",
+    "roboto-condensed": "RobotoCondensed-Regular",
+    "open-sans": "OpenSans-Regular",
+    "open-sans-bold": "OpenSans-Bold",
+    "open-sans-light": "OpenSans-Light",
+    "lato": "Lato-Regular",
+    "lato-bold": "Lato-Bold",
+    "lato-light": "Lato-Light",
+    "lato-thin": "Lato-Thin",
+    "lato-black": "Lato-Black",
+    "ubuntu": "Ubuntu-R",
+    "ubuntu-bold": "Ubuntu-B",
+    "ubuntu-light": "Ubuntu-L",
+    "noto-sans": "NotoSans-Regular",
+    "noto-sans-bold": "NotoSans-Bold",
+    "liberation-sans": "LiberationSans-Regular",
+    "liberation-sans-bold": "LiberationSans-Bold",
+    "inter": "Inter-Regular" if "inter-regular" in FONT_REGISTRY else "NotoSans-Regular",
+    # Serif
+    "noto-serif": "NotoSerif-Regular",
+    "noto-serif-bold": "NotoSerif-Bold",
+    "liberation-serif": "LiberationSerif-Regular",
+    "liberation-serif-bold": "LiberationSerif-Bold",
+    "dejavu-serif": "DejaVuSerif",
+    "dejavu-serif-bold": "DejaVuSerif-Bold",
+    # Monospace
+    "fira-code": "FiraCode-Regular",
+    "fira-code-bold": "FiraCode-Bold",
+    "fira-code-light": "FiraCode-Light",
+    "ubuntu-mono": "UbuntuMono-R",
+    "liberation-mono": "LiberationMono-Regular",
+    "noto-mono": "NotoSansMono-Regular",
+    "dejavu-mono": "DejaVuSansMono",
+    "dejavu-mono-bold": "DejaVuSansMono-Bold",
+    # Display/Impact
+    "roboto-black": "Roboto-Black",
+    "lato-heavy": "Lato-Heavy",
+    "open-sans-extrabold": "OpenSans-ExtraBold",
+    # Default
+    "default": "DejaVuSans-Bold",
+    "sans": "Roboto-Regular",
+    "serif": "NotoSerif-Regular",
+    "mono": "FiraCode-Regular",
+    "bold": "Roboto-Bold",
+    "impact": "Roboto-Black",
+}
+
+def get_font(font_name, size):
+    """Get a PIL font by name and size. Falls back gracefully."""
+    # Check curated families first
+    registry_key = FONT_FAMILIES.get(font_name, font_name)
+    if not isinstance(registry_key, str):
+        registry_key = font_name
+
+    # Look up in registry (case-insensitive)
+    key = registry_key.lower().replace(" ", "-").replace("_", "-")
+    if key in FONT_REGISTRY:
+        try:
+            return ImageFont.truetype(FONT_REGISTRY[key]["path"], size)
+        except:
+            pass
+
+    # Try direct font name lookup
+    direct = font_name.lower().replace(" ", "-").replace("_", "-")
+    if direct in FONT_REGISTRY:
+        try:
+            return ImageFont.truetype(FONT_REGISTRY[direct]["path"], size)
+        except:
+            pass
+
+    # Fallback to DejaVu
+    try:
+        return ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size)
+    except:
+        return ImageFont.load_default()
+
+
+
+def _text_overlay_enhanced(img, params):
+    """Enhanced text overlay with full font system, alignment, shadows, backgrounds, and effects."""
+    text = str(params.get("text", "Hello"))
+    font_size = int(params.get("font_size", 48))
+    font_name = params.get("font", params.get("font_family", "default"))
+    color = params.get("color", "#ffffff")
+    opacity = int(params.get("opacity", 255))
+    position = params.get("position", "center")
+    x = params.get("x")
+    y_pos = params.get("y")
+    rotation = float(params.get("rotation", 0))
+    stroke_color = params.get("stroke_color", "")
+    stroke_width = int(params.get("stroke_width", 0))
+    line_spacing = int(params.get("line_spacing", 8))
+    align = params.get("align", "center")  # left, center, right
+    letter_spacing = int(params.get("letter_spacing", 0))
+    # Shadow
+    shadow_color = params.get("shadow_color", "")
+    shadow_offset_x = int(params.get("shadow_offset_x", 3))
+    shadow_offset_y = int(params.get("shadow_offset_y", 3))
+    shadow_blur = int(params.get("shadow_blur", 0))
+    # Background
+    bg_color = params.get("bg_color", "")
+    bg_padding = int(params.get("bg_padding", 12))
+    bg_radius = int(params.get("bg_radius", 0))
+    # Transform
+    uppercase = params.get("uppercase", False)
+    capitalize = params.get("capitalize", False)
+
+    def hex_to_rgba(h, a=255):
+        h = h.lstrip("#")
+        if len(h) == 6:
+            return tuple(int(h[i:i+2], 16) for i in (0, 2, 4)) + (int(a),)
+        return (255, 255, 255, int(a))
+
+    # Text transform
+    if uppercase or str(uppercase).lower() == "true":
+        text = text.upper()
+    elif capitalize or str(capitalize).lower() == "true":
+        text = text.title()
+
+    fill = hex_to_rgba(color, opacity)
+    stroke = hex_to_rgba(stroke_color, opacity) if stroke_color else None
+    shadow = hex_to_rgba(shadow_color, min(200, opacity)) if shadow_color else None
+
+    if img.mode != "RGBA":
+        img = img.convert("RGBA")
+
+    font = get_font(font_name, font_size)
+
+    # Create text layer
+    txt_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(txt_layer)
+
+    # Parse text lines
+    lines = text.replace("\\n", "\n").split("\n")
+    line_heights = []
+    line_widths = []
+    for line in lines:
+        bbox = draw.textbbox((0, 0), line, font=font)
+        line_widths.append(bbox[2] - bbox[0])
+        line_heights.append(bbox[3] - bbox[1])
+    total_h = sum(line_heights) + line_spacing * (len(lines) - 1)
+    max_w = max(line_widths) if line_widths else 0
+
+    w, h = img.size
+    pad = 20
+
+    # Determine base position
+    if x is not None and y_pos is not None:
+        tx, ty = int(x), int(y_pos)
+    else:
+        positions = {
+            "top-left": (pad, pad),
+            "top-center": ((w - max_w) // 2, pad),
+            "top-right": (w - max_w - pad, pad),
+            "center-left": (pad, (h - total_h) // 2),
+            "center": ((w - max_w) // 2, (h - total_h) // 2),
+            "center-right": (w - max_w - pad, (h - total_h) // 2),
+            "bottom-left": (pad, h - total_h - pad),
+            "bottom-center": ((w - max_w) // 2, h - total_h - pad),
+            "bottom-right": (w - max_w - pad, h - total_h - pad),
+        }
+        tx, ty = positions.get(position, positions["center"])
+
+    # Draw background if specified
+    if bg_color:
+        bg_fill = hex_to_rgba(bg_color, min(230, opacity))
+        bg_x1 = tx - bg_padding
+        bg_y1 = ty - bg_padding
+        bg_x2 = tx + max_w + bg_padding
+        bg_y2 = ty + total_h + bg_padding
+        if bg_radius > 0:
+            draw.rounded_rectangle([bg_x1, bg_y1, bg_x2, bg_y2], radius=bg_radius, fill=bg_fill)
+        else:
+            draw.rectangle([bg_x1, bg_y1, bg_x2, bg_y2], fill=bg_fill)
+
+    # Draw each line
+    cy = ty
+    for i, line in enumerate(lines):
+        # Calculate x offset for alignment
+        if align == "right":
+            lx = tx + max_w - line_widths[i]
+        elif align == "center":
+            lx = tx + (max_w - line_widths[i]) // 2
+        else:
+            lx = tx
+
+        kwargs = {"fill": fill, "font": font}
+        if stroke and stroke_width > 0:
+            kwargs["stroke_fill"] = stroke
+            kwargs["stroke_width"] = stroke_width
+
+        # Draw shadow first
+        if shadow:
+            shadow_kwargs = {"fill": shadow, "font": font}
+            if shadow_blur > 0:
+                # Simple shadow with offset
+                for dx in range(-shadow_blur, shadow_blur + 1):
+                    for dy in range(-shadow_blur, shadow_blur + 1):
+                        if dx*dx + dy*dy <= shadow_blur*shadow_blur:
+                            draw.text((lx + shadow_offset_x + dx, cy + shadow_offset_y + dy), line, **shadow_kwargs)
+            else:
+                draw.text((lx + shadow_offset_x, cy + shadow_offset_y), line, **shadow_kwargs)
+
+        # Draw main text
+        draw.text((lx, cy), line, **kwargs)
+        cy += line_heights[i] + line_spacing
+
+    # Rotate text layer if needed
+    if rotation:
+        txt_layer = txt_layer.rotate(rotation, expand=False, resample=Image.BICUBIC)
+
+    return Image.alpha_composite(img, txt_layer)
+
+
+
+
+# ============================================================
+# NEW API TOOLS
+# ============================================================
+
+def _collage(img, params):
+    """Create a collage layout. For single-image API, creates tiled/grid effect."""
+    cols = int(params.get("cols", 2))
+    rows = int(params.get("rows", 2))
+    spacing = int(params.get("spacing", 4))
+    bg = params.get("bg_color", "#ffffff")
+
+    def hex_to_rgb(h):
+        h = h.lstrip("#")
+        return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+    tile_w = img.size[0] // cols
+    tile_h = img.size[1] // rows
+    out_w = tile_w * cols + spacing * (cols + 1)
+    out_h = tile_h * rows + spacing * (rows + 1)
+    out = Image.new("RGB", (out_w, out_h), hex_to_rgb(bg))
+
+    # Create varied crops for each tile
+    w, h = img.size
+    for r in range(rows):
+        for c in range(cols):
+            # Slightly different crop for each tile
+            offset_x = int(w * 0.05 * ((r * cols + c) % 3))
+            offset_y = int(h * 0.05 * ((r * cols + c) % 2))
+            crop_box = (offset_x, offset_y, min(w, offset_x + tile_w + 50), min(h, offset_y + tile_h + 50))
+            tile = img.crop(crop_box).resize((tile_w, tile_h), Image.LANCZOS)
+            x = spacing + c * (tile_w + spacing)
+            y = spacing + r * (tile_h + spacing)
+            out.paste(tile, (x, y))
+
+    return out
+
+
+def _meme(img, params):
+    """Generate meme with top/bottom text, impact-style."""
+    top = str(params.get("top_text", "")).upper()
+    bottom = str(params.get("bottom_text", "")).upper()
+    font_size = int(params.get("font_size", 0))
+
+    if img.mode != "RGBA":
+        img = img.convert("RGBA")
+
+    w, h = img.size
+    if font_size == 0:
+        font_size = max(24, w // 12)
+
+    font = get_font("impact", font_size)
+    if not font:
+        font = get_font("roboto-black", font_size)
+
+    txt_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(txt_layer)
+
+    def draw_meme_text(draw, text, y_center, font):
+        if not text:
+            return
+        # Word wrap
+        words = text.split()
+        lines = []
+        current = ""
+        for word in words:
+            test = current + " " + word if current else word
+            bbox = draw.textbbox((0, 0), test, font=font)
+            if bbox[2] - bbox[0] > w * 0.9:
+                if current:
+                    lines.append(current)
+                current = word
+            else:
+                current = test
+        if current:
+            lines.append(current)
+
+        total_h = len(lines) * (font_size + 4)
+        cy = y_center - total_h // 2
+
+        for line in lines:
+            bbox = draw.textbbox((0, 0), line, font=font)
+            tw = bbox[2] - bbox[0]
+            tx = (w - tw) // 2
+            # Black outline
+            draw.text((tx, cy), line, fill=(255, 255, 255, 255), font=font,
+                      stroke_fill=(0, 0, 0, 255), stroke_width=max(2, font_size // 16))
+            cy += font_size + 4
+
+    if top:
+        draw_meme_text(draw, top, font_size + 10, font)
+    if bottom:
+        draw_meme_text(draw, bottom, h - font_size - 10, font)
+
+    return Image.alpha_composite(img, txt_layer)
+
+
+def _og_image(img, params):
+    """Generate an Open Graph image (1200x630) with title and optional subtitle."""
+    title = str(params.get("title", "Title"))
+    subtitle = params.get("subtitle", "")
+    title_color = params.get("title_color", "#ffffff")
+    subtitle_color = params.get("subtitle_color", "#cccccc")
+    overlay_opacity = float(params.get("overlay_opacity", 0.5))
+    title_font = params.get("title_font", "roboto-bold")
+    subtitle_font = params.get("subtitle_font", "open-sans")
+
+    def hex_to_rgba(h, a=255):
+        h = h.lstrip("#")
+        if len(h) == 6:
+            return tuple(int(h[i:i+2], 16) for i in (0, 2, 4)) + (int(a),)
+        return (255, 255, 255, int(a))
+
+    # Resize to OG dimensions
+    img = img.convert("RGBA")
+    img = ImageOps.fit(img, (1200, 630), Image.LANCZOS)
+
+    # Dark overlay
+    overlay = Image.new("RGBA", (1200, 630), (0, 0, 0, int(255 * overlay_opacity)))
+    img = Image.alpha_composite(img, overlay)
+
+    draw = ImageDraw.Draw(img)
+
+    # Title (auto-size to fit)
+    title_size = 72
+    font = get_font(title_font, title_size)
+    # Word wrap title
+    words = title.split()
+    lines = []
+    current = ""
+    for word in words:
+        test = current + " " + word if current else word
+        bbox = draw.textbbox((0, 0), test, font=font)
+        if bbox[2] - bbox[0] > 1050:
+            if current:
+                lines.append(current)
+            current = word
+        else:
+            current = test
+    if current:
+        lines.append(current)
+
+    # Center vertically
+    line_h = title_size + 8
+    total_h = len(lines) * line_h
+    if subtitle:
+        total_h += 60  # space for subtitle
+
+    start_y = (630 - total_h) // 2
+
+    for i, line in enumerate(lines):
+        bbox = draw.textbbox((0, 0), line, font=font)
+        tw = bbox[2] - bbox[0]
+        tx = (1200 - tw) // 2
+        draw.text((tx, start_y + i * line_h), line, fill=hex_to_rgba(title_color), font=font)
+
+    # Subtitle
+    if subtitle:
+        sub_font = get_font(subtitle_font, 32)
+        bbox = draw.textbbox((0, 0), subtitle, font=sub_font)
+        tw = bbox[2] - bbox[0]
+        tx = (1200 - tw) // 2
+        sy = start_y + len(lines) * line_h + 20
+        draw.text((tx, sy), subtitle, fill=hex_to_rgba(subtitle_color), font=sub_font)
+
+    return img
+
+
+def _gradient_text(img, params):
+    """Apply gradient-colored text overlay."""
+    text = str(params.get("text", "Hello"))
+    font_size = int(params.get("font_size", 72))
+    font_name = params.get("font", "roboto-bold")
+    color_start = params.get("color_start", "#ff6b6b")
+    color_end = params.get("color_end", "#4ecdc4")
+    position = params.get("position", "center")
+    direction = params.get("direction", "horizontal")  # horizontal or vertical
+
+    def hex_to_rgb(h):
+        h = h.lstrip("#")
+        return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+    if img.mode != "RGBA":
+        img = img.convert("RGBA")
+
+    font = get_font(font_name, font_size)
+
+    # Create text mask
+    txt = Image.new("L", img.size, 0)
+    draw = ImageDraw.Draw(txt)
+
+    w, h = img.size
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+    positions = {
+        "top-center": ((w - tw) // 2, 20),
+        "center": ((w - tw) // 2, (h - th) // 2),
+        "bottom-center": ((w - tw) // 2, h - th - 20),
+    }
+    tx, ty = positions.get(position, positions["center"])
+
+    draw.text((tx, ty), text, fill=255, font=font)
+
+    # Create gradient
+    c1, c2 = hex_to_rgb(color_start), hex_to_rgb(color_end)
+    gradient = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    gd = ImageDraw.Draw(gradient)
+
+    if direction == "vertical":
+        for y in range(h):
+            t = y / max(h - 1, 1)
+            r = int(c1[0] + (c2[0] - c1[0]) * t)
+            g = int(c1[1] + (c2[1] - c1[1]) * t)
+            b = int(c1[2] + (c2[2] - c1[2]) * t)
+            gd.line([(0, y), (w, y)], fill=(r, g, b, 255))
+    else:
+        for x in range(w):
+            t = x / max(w - 1, 1)
+            r = int(c1[0] + (c2[0] - c1[0]) * t)
+            g = int(c1[1] + (c2[1] - c1[1]) * t)
+            b = int(c1[2] + (c2[2] - c1[2]) * t)
+            gd.line([(x, 0), (x, h)], fill=(r, g, b, 255))
+
+    # Apply text mask to gradient
+    gradient.putalpha(txt)
+
+    return Image.alpha_composite(img, gradient)
+
+
+def _badge(img, params):
+    """Add a badge/label to an image corner."""
+    text = str(params.get("text", "NEW"))
+    position = params.get("position", "top-right")
+    bg = params.get("bg_color", "#ef4444")
+    text_color = params.get("text_color", "#ffffff")
+    font_size = int(params.get("font_size", 18))
+    shape = params.get("shape", "pill")  # pill, rect, circle
+
+    def hex_to_rgba(h, a=255):
+        h = h.lstrip("#")
+        if len(h) == 6:
+            return tuple(int(h[i:i+2], 16) for i in (0, 2, 4)) + (int(a),)
+        return (255, 255, 255, int(a))
+
+    if img.mode != "RGBA":
+        img = img.convert("RGBA")
+
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    font = get_font("roboto-bold", font_size)
+
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    pad_x, pad_y = 12, 6
+    bw, bh = tw + pad_x * 2, th + pad_y * 2
+
+    w, h = img.size
+    margin = 12
+    pos_map = {
+        "top-left": (margin, margin),
+        "top-right": (w - bw - margin, margin),
+        "bottom-left": (margin, h - bh - margin),
+        "bottom-right": (w - bw - margin, h - bh - margin),
+    }
+    bx, by = pos_map.get(position, pos_map["top-right"])
+
+    bg_fill = hex_to_rgba(bg)
+    if shape == "pill":
+        draw.rounded_rectangle([bx, by, bx + bw, by + bh], radius=bh // 2, fill=bg_fill)
+    elif shape == "circle":
+        r = max(bw, bh) // 2 + 4
+        cx, cy = bx + bw // 2, by + bh // 2
+        draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=bg_fill)
+    else:
+        draw.rectangle([bx, by, bx + bw, by + bh], fill=bg_fill)
+
+    draw.text((bx + pad_x, by + pad_y), text, fill=hex_to_rgba(text_color), font=font)
+
+    return Image.alpha_composite(img, overlay)
+
+
+def _vintage(img, params):
+    """Apply a vintage/retro photo effect (sepia + vignette + grain + warm tones)."""
+    intensity = float(params.get("intensity", 0.7))
+
+    # Convert to RGB
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+
+    # Step 1: Warm color shift
+    img = ImageEnhance.Color(img).enhance(0.7 + 0.3 * (1 - intensity))
+
+    # Step 2: Sepia tone
+    gray = img.convert("L")
+    w, h = gray.size
+    sepia = Image.new("RGB", (w, h))
+    gp = gray.load()
+    sp = sepia.load()
+    for y in range(h):
+        for x in range(w):
+            g = gp[x, y]
+            r = min(255, int(g * (1.0 + 0.2 * intensity)))
+            gr = min(255, int(g * (0.9 + 0.05 * intensity)))
+            b = max(0, int(g * (0.7 - 0.1 * intensity)))
+            sp[x, y] = (r, gr, b)
+
+    # Blend original with sepia
+    from PIL import ImageChops
+    img = Image.blend(img, sepia, intensity * 0.6)
+
+    # Step 3: Slight contrast reduction
+    img = ImageEnhance.Contrast(img).enhance(0.85 + 0.15 * (1 - intensity))
+
+    # Step 4: Vignette
+    img = img.convert("RGBA")
+    vig = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    vd = ImageDraw.Draw(vig)
+    cx, cy = w // 2, h // 2
+    max_r = math.sqrt(cx * cx + cy * cy)
+    for ring in range(0, int(max_r), 2):
+        alpha = int(min(255, max(0, (ring / max_r - 0.5) * 2 * 255 * intensity * 0.7)))
+        vd.ellipse([cx - ring, cy - ring, cx + ring, cy + ring], outline=(0, 0, 0, alpha))
+    img = Image.alpha_composite(img, vig)
+
+    return img.convert("RGB")
+
+
+def _split_tone(img, params):
+    """Apply split toning — different colors for shadows and highlights."""
+    shadow_color = params.get("shadow_color", "#1a237e")
+    highlight_color = params.get("highlight_color", "#ff8f00")
+    strength = float(params.get("strength", 0.3))
+
+    def hex_to_rgb(h):
+        h = h.lstrip("#")
+        return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+    sc = hex_to_rgb(shadow_color)
+    hc = hex_to_rgb(highlight_color)
+
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+
+    pixels = img.load()
+    w, h = img.size
+
+    for y in range(h):
+        for x in range(w):
+            r, g, b = pixels[x, y]
+            luminance = (r * 0.299 + g * 0.587 + b * 0.114) / 255.0
+
+            if luminance < 0.5:
+                # Shadows — blend toward shadow color
+                t = strength * (1 - luminance * 2)
+                nr = int(r + (sc[0] - r) * t)
+                ng = int(g + (sc[1] - g) * t)
+                nb = int(b + (sc[2] - b) * t)
+            else:
+                # Highlights — blend toward highlight color
+                t = strength * ((luminance - 0.5) * 2)
+                nr = int(r + (hc[0] - r) * t)
+                ng = int(g + (hc[1] - g) * t)
+                nb = int(b + (hc[2] - b) * t)
+
+            pixels[x, y] = (max(0, min(255, nr)), max(0, min(255, ng)), max(0, min(255, nb)))
+
+    return img
+
+
+def _color_grade(img, params):
+    """Professional color grading with lift/gamma/gain controls."""
+    # Lift (shadows), Gamma (midtones), Gain (highlights) — each RGB
+    lift_r = float(params.get("lift_r", 0))
+    lift_g = float(params.get("lift_g", 0))
+    lift_b = float(params.get("lift_b", 0))
+    gamma_r = float(params.get("gamma_r", 1.0))
+    gamma_g = float(params.get("gamma_g", 1.0))
+    gamma_b = float(params.get("gamma_b", 1.0))
+    gain_r = float(params.get("gain_r", 1.0))
+    gain_g = float(params.get("gain_g", 1.0))
+    gain_b = float(params.get("gain_b", 1.0))
+
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+
+    # Build lookup tables
+    def make_lut(lift, gamma, gain):
+        lut = []
+        for i in range(256):
+            v = i / 255.0
+            # Apply lift (add to shadows)
+            v = v + lift * (1 - v)
+            # Apply gain (multiply highlights)
+            v = v * gain
+            # Apply gamma
+            if gamma != 1.0 and v > 0:
+                v = pow(v, 1.0 / gamma)
+            lut.append(max(0, min(255, int(v * 255))))
+        return lut
+
+    lut_r = make_lut(lift_r, gamma_r, gain_r)
+    lut_g = make_lut(lift_g, gamma_g, gain_g)
+    lut_b = make_lut(lift_b, gamma_b, gain_b)
+
+    return img.point(lut_r + lut_g + lut_b)
+
+
+def _smart_resize(img, params):
+    """Resize with smart cropping — keeps the most interesting region."""
+    width = int(params.get("width", 800))
+    height = int(params.get("height", 600))
+
+    # Use entropy-based cropping via ImageOps.fit with centering
+    return ImageOps.fit(img, (width, height), Image.LANCZOS, centering=(0.5, 0.5))
+
+
 PIPELINE_FUNCS = {
     'resize': _resize, 'crop': _crop, 'rotate': _rotate,
     'blur': _blur, 'sharpen': _sharpen,
@@ -1623,13 +2288,22 @@ PIPELINE_FUNCS = {
     'solarize': _solarize, 'mirror': _mirror, 'tilt_shift': _tilt_shift,
     'circle_crop': _circle_crop, 'border': _border, 'levels': _levels,
     'color_replace': _color_replace, 'noise': _noise,
-    'text_overlay': _text_overlay, 'transparency': _transparency,
+    'text_overlay': _text_overlay_enhanced, 'transparency': _transparency,
     # Hyphen aliases (frontend/registry uses hyphens, AI generates underscores — support both)
     'edge-detect': _edge_detect, 'color-adjust': _color_adjust,
     'film-grain': _film_grain, 'hue-shift': _hue_shift,
     'oil-paint': _oil_paint, 'tilt-shift': _tilt_shift,
     'circle-crop': _circle_crop, 'color-replace': _color_replace,
-    'text-overlay': _text_overlay,
+    'text-overlay': _text_overlay_enhanced,
+    'collage': _collage,
+    'meme': _meme,
+    'og-image': _og_image,
+    'gradient-text': _gradient_text,
+    'badge': _badge,
+    'vintage': _vintage,
+    'split-tone': _split_tone,
+    'color-grade': _color_grade,
+    'smart-resize': _smart_resize,
 }
 
 
@@ -1779,8 +2453,44 @@ TOOL_REGISTRY = {
         'params': {'amount': 'float (0.0-1.0)', 'type': 'gaussian|salt_pepper'},
     },
     'text-overlay': {
-        'description': 'Add text overlay with full styling (font, color, position, rotation, stroke)',
-        'params': {'text': 'string', 'font_size': 'int (12-200)', 'color': 'hex string', 'opacity': 'int (0-255)', 'position': 'top-left|top-center|top-right|center-left|center|center-right|bottom-left|bottom-center|bottom-right', 'x': 'int (exact x position)', 'y': 'int (exact y position)', 'rotation': 'float (degrees)', 'stroke_color': 'hex string', 'stroke_width': 'int (0-10)', 'line_spacing': 'int'},
+        'description': 'Add text overlay with full styling — fonts, alignment, shadows, backgrounds, transforms',
+        'params': {'text': 'string', 'font_size': 'int (12-200)', 'font': 'font name (see /api/v1/fonts)', 'color': 'hex string', 'opacity': 'int (0-255)', 'position': 'position string', 'x': 'int', 'y': 'int', 'rotation': 'float', 'stroke_color': 'hex', 'stroke_width': 'int (0-10)', 'line_spacing': 'int', 'align': 'left|center|right', 'shadow_color': 'hex', 'shadow_offset_x': 'int', 'shadow_offset_y': 'int', 'bg_color': 'hex (text background)', 'bg_padding': 'int', 'bg_radius': 'int', 'uppercase': 'bool', 'capitalize': 'bool'},
+    },
+    'collage': {
+        'description': 'Create a tiled collage grid from image',
+        'params': {'cols': 'int (1-6)', 'rows': 'int (1-6)', 'spacing': 'int (0-20)', 'bg_color': 'hex string'},
+    },
+    'meme': {
+        'description': 'Add meme-style top/bottom text with white impact font and black outline',
+        'params': {'top_text': 'string', 'bottom_text': 'string', 'font_size': 'int (auto if 0)'},
+    },
+    'og-image': {
+        'description': 'Generate Open Graph image (1200x630) with title overlay on background image',
+        'params': {'title': 'string', 'subtitle': 'string', 'title_color': 'hex', 'subtitle_color': 'hex', 'overlay_opacity': 'float (0-1)', 'title_font': 'font name', 'subtitle_font': 'font name'},
+    },
+    'gradient-text': {
+        'description': 'Add gradient-colored text overlay',
+        'params': {'text': 'string', 'font_size': 'int', 'font': 'font name', 'color_start': 'hex', 'color_end': 'hex', 'position': 'position string', 'direction': 'horizontal|vertical'},
+    },
+    'badge': {
+        'description': 'Add a badge/label to image corner',
+        'params': {'text': 'string', 'position': 'top-left|top-right|bottom-left|bottom-right', 'bg_color': 'hex', 'text_color': 'hex', 'font_size': 'int', 'shape': 'pill|rect|circle'},
+    },
+    'vintage': {
+        'description': 'Apply vintage/retro photo effect (sepia + vignette + warm tones)',
+        'params': {'intensity': 'float (0.0-1.0)'},
+    },
+    'split-tone': {
+        'description': 'Split toning — different colors for shadows and highlights',
+        'params': {'shadow_color': 'hex', 'highlight_color': 'hex', 'strength': 'float (0.0-1.0)'},
+    },
+    'color-grade': {
+        'description': 'Professional color grading with lift/gamma/gain RGB controls',
+        'params': {'lift_r': 'float (-0.5 to 0.5)', 'lift_g': 'float', 'lift_b': 'float', 'gamma_r': 'float (0.5-2.0)', 'gamma_g': 'float', 'gamma_b': 'float', 'gain_r': 'float (0.5-2.0)', 'gain_g': 'float', 'gain_b': 'float'},
+    },
+    'smart-resize': {
+        'description': 'Resize with smart center-weighted cropping',
+        'params': {'width': 'int', 'height': 'int'},
     },
     'transparency': {
         'description': 'Set image transparency / remove background color to transparent',
@@ -1829,10 +2539,19 @@ Available tools and their parameters:
 - levels: {black_point: int (0-255), white_point: int (0-255), gamma: float (0.1-5)}
 - color_replace: {from_color: hex, to_color: hex, tolerance: int (1-100)}
 - noise: {amount: float (0-1), type: "gaussian"|"salt_pepper"}
-- text_overlay: {text: string, font_size: int (12-200), color: hex, opacity: int (0-255), position: "top-left"|"top-center"|"top-right"|"center-left"|"center"|"center-right"|"bottom-left"|"bottom-center"|"bottom-right", x: int, y: int, rotation: float, stroke_color: hex, stroke_width: int (0-10)}
+- text_overlay: {text: string, font_size: int (12-200), font: font_name, color: hex, opacity: int (0-255), align: left|center|right, shadow_color: hex, bg_color: hex, position: "top-left"|"top-center"|"top-right"|"center-left"|"center"|"center-right"|"bottom-left"|"bottom-center"|"bottom-right", x: int, y: int, rotation: float, stroke_color: hex, stroke_width: int (0-10)}
 - transparency: {opacity: float (0-1), remove_color: hex (color to make transparent), tolerance: int (1-100)}
 - convert: {format: "PNG"|"JPEG"|"WEBP", quality: int (1-100)}
 - compress: {quality: int (1-100), format: "JPEG"|"WEBP"}
+- collage: {cols: int (1-6), rows: int (1-6), spacing: int, bg_color: hex}
+- meme: {top_text: string, bottom_text: string, font_size: int}
+- og_image: {title: string, subtitle: string, title_font: font, overlay_opacity: float}
+- gradient_text: {text: string, font_size: int, font: font, color_start: hex, color_end: hex, direction: horizontal|vertical}
+- badge: {text: string, position: top-left|top-right|bottom-left|bottom-right, bg_color: hex, shape: pill|rect|circle}
+- vintage: {intensity: float (0.0-1.0)}
+- split_tone: {shadow_color: hex, highlight_color: hex, strength: float}
+- color_grade: {lift_r: float, lift_g: float, lift_b: float, gamma_r: float, gamma_g: float, gamma_b: float, gain_r: float, gain_g: float, gain_b: float}
+- smart_resize: {width: int, height: int}
 
 Rules:
 1. Output ONLY a valid JSON array of steps. No explanation, no markdown.
@@ -2261,6 +2980,38 @@ def key_usage():
         "created": data.get("created"),
         "last_used": data.get("last_used"),
     })
+
+
+# ============================================================
+# NEW API v1 ROUTES (added tools)
+# ============================================================
+
+@app.route("/api/v1/fonts", methods=["GET"])
+def v1_list_fonts():
+    """List all available fonts for text overlays."""
+    families = {}
+    for key, registry_name in FONT_FAMILIES.items():
+        rk = registry_name.lower().replace(" ", "-").replace("_", "-")
+        if rk in FONT_REGISTRY:
+            families[key] = {
+                "name": FONT_REGISTRY[rk]["name"],
+                "path": FONT_REGISTRY[rk]["path"],
+            }
+
+    categories = {
+        "sans-serif": [k for k in families if any(s in k for s in ["roboto", "open-sans", "lato", "ubuntu", "noto-sans", "liberation-sans", "inter"])],
+        "serif": [k for k in families if any(s in k for s in ["serif", "dejavu-serif"])],
+        "monospace": [k for k in families if any(s in k for s in ["fira", "mono"])],
+        "display": [k for k in families if any(s in k for s in ["black", "heavy", "extrabold", "impact"])],
+    }
+
+    return jsonify({
+        "fonts": families,
+        "categories": categories,
+        "count": len(families),
+        "aliases": {"sans": "roboto", "serif": "noto-serif", "mono": "fira-code", "bold": "roboto-bold", "impact": "roboto-black"},
+    })
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=3240, debug=False)

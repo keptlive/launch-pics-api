@@ -1,12 +1,12 @@
 # launch.pics Image Processing API
 
-REST API with 35+ image processing tools. Resize, crop, filter, watermark, compose pipelines, and generate AI-powered workflows.
+REST API with 45+ image processing tools. Resize, crop, filter, watermark, compose pipelines, and generate AI-powered workflows.
 
 **Live at:** [launch.pics](https://launch.pics) | **API Docs:** [launch.pics/docs](https://launch.pics/docs/)
 
 ## Features
 
-- **35+ image tools** — resize, crop, blur, sharpen, watermark, color adjust, effects, and more
+- **45+ image tools** — resize, crop, blur, sharpen, watermark, color adjust, effects, and more
 - **Pipelines** — chain up to 20 tools in a single request
 - **AI workflows** — describe transformations in plain English, get a ready-to-run pipeline
 - **Batch processing** — process up to 10 images in one call
@@ -54,6 +54,7 @@ curl -X POST https://launch.pics/api/v1/generate-workflow \
 |--------|----------|------|-------------|
 | GET | `/api/v1/health` | No | Health check and endpoint discovery |
 | GET | `/api/v1/tools` | No | List all tools with parameters |
+| GET | `/api/v1/fonts` | No | List available fonts for text tools |
 | POST | `/api/v1/{tool}` | Yes | Process image with a single tool |
 | POST | `/api/v1/pipeline` | Yes | Multi-step pipeline processing |
 | POST | `/api/v1/generate-workflow` | Yes | AI-powered workflow generation |
@@ -70,7 +71,17 @@ curl -X POST https://launch.pics/api/v1/generate-workflow \
 
 **Overlay & Compositing:** text-overlay, watermark, shadow, transparency
 
+**Creative & AI:** meme, og-image, gradient-text, badge, vintage, collage, split-tone, color-grade, smart-resize
+
 **Format & Output:** convert, compress
+
+## Font System
+
+45+ fonts available via the `/api/v1/fonts` endpoint. Use any font name in text tools via the `font` parameter.
+
+**Categories:** sans-serif (Roboto, Open Sans, Lato, Ubuntu, Noto Sans), serif (Noto Serif, Liberation Serif), monospace (Fira Code, Ubuntu Mono), display (Roboto Black, Lato Heavy)
+
+**Aliases:** `sans`, `serif`, `mono`, `bold`, `impact`
 
 ## Self-Hosting
 
